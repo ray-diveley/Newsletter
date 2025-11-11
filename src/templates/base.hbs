@@ -1,0 +1,97 @@
+﻿<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>{{title}}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body style="margin:0;background:#f5f7fb;font-family:Arial,Helvetica,sans-serif">
+  <div style="max-width:1200px;margin:18px auto;padding:20px">
+    <div style="background:#0b79ff;color:#fff;padding:12px 20px;border-radius:8px;text-align:center;font-size:20px;font-weight:700" id="top">
+      <span style="margin-right:10px">📢</span>
+      {{title}}
+    </div>
+
+    <div style="height:16px"></div>
+
+    {{#if prioritiesSection}}
+    <div style="background:#fff;padding:20px;border-radius:8px;border-left:5px solid #0b79ff;margin-bottom:16px">
+      <div style="color:#0b79ff;font-weight:700;font-size:16px;margin-bottom:12px">{{prioritiesSection.heading}}</div>
+      <div style="color:#333;font-size:14px;line-height:1.6">{{prioritiesSection.content}}</div>
+    </div>
+    {{/if}}
+
+    <div style="height:16px"></div>
+
+    {{#if tocLeft}}
+    <div style="background:#fff;padding:18px;border-radius:8px;margin-top:16px;border:1px solid #e6eef8">
+      <div style="color:#0b79ff;font-weight:700;margin-bottom:10px">In This Issue</div>
+      <div style="display:flex;gap:24px">
+        <div style="flex:1">
+          {{#each tocLeft}}
+              <div style="border-bottom:1px solid #f0f0f0;padding:6px 0;font-size:14px"><a href="#{{id}}" style="color:{{#if this.done}}#28a745{{else}}#333{{/if}};text-decoration:none;font-weight:{{#if this.done}}700{{else}}400{{/if}}">{{#if this.done}}✓ {{/if}}{{#if this.icon}}{{icon}} {{/if}}{{heading}}</a></div>
+          {{/each}}
+        </div>
+        <div style="flex:1">
+          {{#each tocRight}}
+              <div style="border-bottom:1px solid #f0f0f0;padding:6px 0;font-size:14px"><a href="#{{id}}" style="color:{{#if this.done}}#28a745{{else}}#333{{/if}};text-decoration:none;font-weight:{{#if this.done}}700{{else}}400{{/if}}">{{#if this.done}}✓ {{/if}}{{#if this.icon}}{{icon}} {{/if}}{{heading}}</a></div>
+          {{/each}}
+        </div>
+      </div>
+    </div>
+    {{else if toc}}
+    <div style="background:#fff;padding:18px;border-radius:8px;margin-top:16px;border:1px solid #e6eef8">
+      <div style="color:#0b79ff;font-weight:700;margin-bottom:10px">In This Issue</div>
+      <div style="display:flex;gap:24px">
+        <div style="flex:1">
+          {{#each toc}}
+            <div style="border-bottom:1px solid #f0f0f0;padding:6px 0;font-size:14px"><a href="#{{id}}" style="color:#333;text-decoration:none">{{#if icon}}{{icon}} {{/if}}{{heading}}</a></div>
+          {{/each}}
+        </div>
+      </div>
+    </div>
+    {{/if}}
+
+    <table style="width:100%;border-collapse:separate;border-spacing:20px 0;margin-top:18px">
+      <tr>
+        <td style="vertical-align:top;width:50%;padding:0">
+          {{#each leftItems}}
+            <div id="{{id}}" style="background:#fff;padding:20px;border-radius:8px;margin-bottom:20px;border-left:5px solid {{color}}">
+              <div style="font-size:18px;color:#0b79ff;font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:10px"><span style="width:30px;height:30px;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;color:#fff;font-size:16px;background:{{color}}">{{icon}}</span> {{heading}}{{#if status}} — {{status}}{{/if}}</div>
+              {{#if cardSummary}}<div style="font-size:14px;color:#333;line-height:1.6;margin-bottom:12px;font-style:italic">{{cardSummary}}</div>{{/if}}
+              <div style="font-size:14px;color:#333;line-height:1.6;margin-bottom:12px">{{{body}}}</div>
+              {{#if closingStatement}}<div style="font-family:Arial,sans-serif;font-size:14px;color:#333;font-weight:bold;margin-top:10px;margin-bottom:15px;">{{closingStatement}}</div>{{/if}}
+              <div style="margin-top:10px;font-weight:700"><a href="#top" style="color:#0b79ff;text-decoration:none">Back to Top</a></div>
+            </div>
+          {{/each}}
+        </td>
+        <td style="vertical-align:top;width:50%;padding:0">
+          {{#each rightItems}}
+            <div id="{{id}}" style="background:#fff;padding:20px;border-radius:8px;margin-bottom:20px;border-left:5px solid {{color}}">
+              <div style="font-size:18px;color:#0b79ff;font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:10px"><span style="width:30px;height:30px;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;color:#fff;font-size:16px;background:{{color}}">{{icon}}</span> {{heading}}{{#if status}} — {{status}}{{/if}}</div>
+              {{#if cardSummary}}<div style="font-size:14px;color:#333;line-height:1.6;margin-bottom:12px;font-style:italic">{{cardSummary}}</div>{{/if}}
+              <div style="font-size:14px;color:#333;line-height:1.6;margin-bottom:12px">{{{body}}}</div>
+              {{#if closingStatement}}<div style="font-family:Arial,sans-serif;font-size:14px;color:#333;font-weight:bold;margin-top:10px;margin-bottom:15px;">{{closingStatement}}</div>{{/if}}
+              <div style="margin-top:10px;font-weight:700"><a href="#top" style="color:#0b79ff;text-decoration:none">Back to Top</a></div>
+            </div>
+          {{/each}}
+        </td>
+      </tr>
+    </table>
+
+    {{#if quickWins}}
+    <div id="quick-wins" style="background:#e6f3fa;padding:30px;border-radius:8px;border:2px solid #007bff;margin-top:20px;max-width:1200px;margin-left:auto;margin-right:auto">
+      <h3 style="color:#007bff;margin-top:0;text-align:center">⚡ Quick Wins — {{date}}</h3>
+      <p style="color:#333;margin-bottom:16px;text-align:left">{{quickWinsDescription}}</p>
+      <ul style="text-align:left">
+        {{#each quickWins}}
+          <li style="color:#333"><strong>{{this.title}}</strong> — {{this.description}}</li>
+        {{/each}}
+      </ul>
+      <div style="text-align:center;margin-top:12px;font-weight:700">Back to Top: <a href="#top" style="color:#007bff;text-decoration:none">Top</a></div>
+    </div>
+    {{/if}}
+
+  </div>
+</body>
+</html>
