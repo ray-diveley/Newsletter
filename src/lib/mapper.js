@@ -310,8 +310,12 @@ export async function mapPreviewToTemplate(preview, openai = null){
   };
 
   const categoryCounts = {};
+  // Attach category metadata to each enriched item for display
   enrichedItems.forEach(it=>{
     const c = categorizeIssue(it);
+    it.category = c;
+    it.categoryLabel = categoryMeta[c]?.label || 'General';
+    it.categoryColor = categoryMeta[c]?.color || '#95a5a6';
     categoryCounts[c] = (categoryCounts[c]||0)+1;
   });
   const totalCategorized = enrichedItems.length || 1; // avoid div/0

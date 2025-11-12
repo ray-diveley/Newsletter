@@ -91,6 +91,7 @@
           {{#each leftItems}}
             <div id="{{id}}" style="background:#fff;padding:20px;border-radius:8px;margin-bottom:20px;border-left:5px solid {{color}}">
               <div style="font-size:18px;color:#0b79ff;font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:10px"><span style="width:30px;height:30px;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;color:#fff;font-size:16px;background:{{color}}">{{icon}}</span> {{heading}}{{#if status}} — {{status}}{{/if}}</div>
+              <div style="margin-bottom:10px"><span style="display:inline-block;background:{{categoryColor}};color:#fff;padding:3px 8px;border-radius:4px;font-size:11px;font-weight:600;letter-spacing:0.5px">{{categoryLabel}}</span></div>
               {{#if cardSummary}}<div style="font-size:14px;color:#333;line-height:1.6;margin-bottom:12px;font-style:italic">{{cardSummary}}</div>{{/if}}
               <div style="font-size:14px;color:#333;line-height:1.6;margin-bottom:12px">{{{body}}}</div>
               {{#if closingStatement}}<div style="font-family:Arial,sans-serif;font-size:14px;color:#333;font-weight:bold;margin-top:10px;margin-bottom:15px;">{{closingStatement}}</div>{{/if}}
@@ -102,6 +103,7 @@
           {{#each rightItems}}
             <div id="{{id}}" style="background:#fff;padding:20px;border-radius:8px;margin-bottom:20px;border-left:5px solid {{color}}">
               <div style="font-size:18px;color:#0b79ff;font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:10px"><span style="width:30px;height:30px;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;color:#fff;font-size:16px;background:{{color}}">{{icon}}</span> {{heading}}{{#if status}} — {{status}}{{/if}}</div>
+              <div style="margin-bottom:10px"><span style="display:inline-block;background:{{categoryColor}};color:#fff;padding:3px 8px;border-radius:4px;font-size:11px;font-weight:600;letter-spacing:0.5px">{{categoryLabel}}</span></div>
               {{#if cardSummary}}<div style="font-size:14px;color:#333;line-height:1.6;margin-bottom:12px;font-style:italic">{{cardSummary}}</div>{{/if}}
               <div style="font-size:14px;color:#333;line-height:1.6;margin-bottom:12px">{{{body}}}</div>
               {{#if closingStatement}}<div style="font-family:Arial,sans-serif;font-size:14px;color:#333;font-weight:bold;margin-top:10px;margin-bottom:15px;">{{closingStatement}}</div>{{/if}}
