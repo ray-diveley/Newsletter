@@ -1,6 +1,6 @@
 import dayjs from 'dayjs';
 import { cleanBulletLine, stripNames, capWords, extractTextFromADF } from './utils.js';
-import { generateIcon, generateClosingStatement, generateQuickWinsDescription, generateCardSummary, generateBullets, generatePriorities } from './icon-generator.js';
+import { generateIcon, generateClosingStatement, generateQuickWinsDescription, generateCardSummary, generateBullets, generatePriorities, generateInvestmentNarrative } from './icon-generator.js';
 import cache from './simple-cache.js';
 
 function escapeHtml(str){
@@ -151,10 +151,27 @@ export async function mapPreviewToTemplate(preview, openai = null){
     const displayTitleCleaned = cleanMarkdownAndTeamPlaceholders(displayTitle);
     // Simpler body: just bullets, no oneLiner or displayTitle (those go in template)
     const body = providedBody || `<div style="font-family:Arial,sans-serif;font-size:14px;color:#333;line-height:1.6;">${bulletsHtmlSafe}${commentsHtml}</div>`;
-    return { id: String(i.key).toLowerCase().replace(/[^a-z0-9]+/gi,'-'), color, icon, key: keyText, summary: summaryText, heading, url: i.url, body, status: i.status || '', description: displayTitle, bullets: picked };
+    return { 
+      id: String(i.key).toLowerCase().replace(/[^a-z0-9]+/gi,'-'), 
+      color, 
+      icon, 
+      key: keyText, 
+      summary: summaryText, 
+      heading, 
+      url: i.url, 
+      body, 
+      status: i.status || '', 
+      description: displayTitle, 
+      bullets: picked,
+      // Preserve original data for categorization
+      _originalSummary: i.summary,
+      _originalLabels: i.labels,
+      _originalComments: i.comments
+    };
   });
 
   // Generate AI-powered icons, bullets, closing statements, and summary for each item (async)
+  const usedIcons = new Set(); // Track icons to prevent duplicates
   const enrichedItems = await Promise.all(items.map(async (item) => {
     // Generate AI bullets (clean, business-focused, concise)
     const aiBullets = await generateBullets(openai, {
@@ -169,7 +186,7 @@ export async function mapPreviewToTemplate(preview, openai = null){
       status: item.status,
       labels: [],
       bullets: item.bullets || []
-    });
+    }, usedIcons);
     const aiClosing = await generateClosingStatement(openai, {
       summary: item.heading,
       status: item.status,
@@ -232,6 +249,115 @@ export async function mapPreviewToTemplate(preview, openai = null){
 
   // Generate AI-powered Quick Wins section description
   const quickWinsDescription = await generateQuickWinsDescription(openai, preview.date);
+
+  // ---------------- Impact / Investment Overview Section ----------------
+  // Categorize each enriched item to show where engineering effort is going.
+  function categorizeIssue(issue){
+    const summary = issue._originalSummary || issue.summary || issue.heading || '';
+    const status = issue.status || '';
+    const labels = issue._originalLabels || [];
+    const comments = issue._originalComments || [];
+    const commentsText = comments.map(c => c.text || '').join(' ');
+    const text = `${summary} ${status} ${issue.heading || ''} ${issue.description || ''} ${commentsText}`.toLowerCase();
+    const labelText = labels.map(l=>String(l).toLowerCase()).join(' ');
+    const has = (re) => re.test(text) || re.test(labelText);
+    
+  // Client Experience (portals, UI/UX, client-facing improvements, first experience) - check first as it's specific
+  if (has(/client portal|customer portal|front[- ]end portal|user portal|self[- ]service|first experience/)) return 'client_experience';
+    
+  // Integration & APIs (third-party integrations, API work, major integration projects) - prioritize over product features
+  if (has(/integration|\ api[\s\b]|sso|azure ad|authentication.*api|maven|hubspot|nexmo|dotdigital|third[- ]party|webhook|consent.*recording|expert.*network|authentication.*permission/)) return 'integration_apis';
+    
+    // Financial Systems (billing, payments, revenue, invoicing) - specific financial keywords
+    if (has(/\bbilling\b|\binvoice\b|revenue|payment|pricing|\bfinance\b|financial system|discount program|incentive program|accrual/)) return 'financial_systems';
+    
+    // Internal Tools & Admin (admin panels, internal tooling, system management)
+  if (has(/admin tool|contact management|\bcontact.{0,15}table|account management|client contact|master.*tool|duplicate|system tool|internal tool|crm|feasibility.*boost/)) return 'internal_tools';
+    
+    // Data & Analytics (reporting, data management, analytics tools)
+  if (has(/\bdata\b.*tool|\breport|analytic|business intelligence|desk research|purchased data|centrali[sz]ed.*data|kpi|ad.*intel|m3mi/)) return 'data_analytics';
+    
+  // Product & Features (new offerings, major features, product development, platform products) - broader catch-all for products
+  if (has(/bidding|dragonfly|audience.*dynamic|dynamic.*audience|wallet.*note|registration.*process|discount.*calculat|list.*match|qualstage|m3teor|verification.*tool|bulk.*email|campaign.*automat/)) return 'product_features';
+    
+    // Testing & Quality (UAT, testing, QA) - after feature categories so it doesn't override
+    if (has(/\buat\b|user acceptance test|testing phase|test coverage|qa phase|quality assurance|bug fix.*phase|defect/)) return 'testing_quality';
+    
+    // Performance & Reliability (optimization, stability, performance)
+    if (has(/performance|speed improvement|latency|optimi[zs]ation|scalab|throughput|efficiency gain|reliability|stability|monitor|uptime/)) return 'performance_reliability';
+    
+    // Infrastructure & Platform (migrations, architecture, platform work)
+    if (has(/infrastructure|migration|upgrade.*platform|platform.*upgrade|architecture|moderni[zs]|docker|kubernetes|deployment.*automat|devops/)) return 'infrastructure_platform';
+    
+    // Security & Compliance (security, auth, compliance, risk)
+    if (has(/security|encrypt|compliance|gdpr|risk.*assess|privacy|pci|vulnerability|audit|pen[- ]?test/)) return 'security_compliance';
+    
+    return 'general_improvements';
+  }
+
+  const categoryMeta = {
+    product_features: { label: 'Product & Features', color: '#0b79ff' },
+    client_experience: { label: 'Client Experience', color: '#17a2b8' },
+    integration_apis: { label: 'Integration & APIs', color: '#6610f2' },
+    data_analytics: { label: 'Data & Analytics', color: '#20c997' },
+    financial_systems: { label: 'Financial Systems', color: '#f39c12' },
+    internal_tools: { label: 'Internal Tools & Admin', color: '#6c757d' },
+    performance_reliability: { label: 'Performance & Reliability', color: '#28a745' },
+    infrastructure_platform: { label: 'Infrastructure & Platform', color: '#8e44ad' },
+    security_compliance: { label: 'Security & Compliance', color: '#e74c3c' },
+    testing_quality: { label: 'Testing & Quality', color: '#fd7e14' },
+    general_improvements: { label: 'General Improvements', color: '#95a5a6' }
+  };
+
+  const categoryCounts = {};
+  enrichedItems.forEach(it=>{
+    const c = categorizeIssue(it);
+    categoryCounts[c] = (categoryCounts[c]||0)+1;
+  });
+  const totalCategorized = enrichedItems.length || 1; // avoid div/0
+  const categoriesArray = Object.keys(categoryMeta)
+    .filter(k => categoryCounts[k])
+    .map(k => {
+      const count = categoryCounts[k];
+      const percent = +( (count / totalCategorized) * 100 ).toFixed(1);
+      return { key: k, label: categoryMeta[k].label, color: categoryMeta[k].color, count, percent };
+    })
+    .sort((a,b)=> b.percent - a.percent);
+
+  // Build pie chart paths (SVG) using arc segments.
+  function buildPiePaths(cats){
+    const paths = [];
+    let cumulative = 0; // in degrees
+    cats.forEach(cat => {
+      const startAngle = cumulative;
+      const sweep = (cat.percent/100) * 360;
+      const endAngle = cumulative + sweep;
+      cumulative += sweep;
+      // Convert polar to cartesian
+      const cx = 60, cy = 60, r = 55;
+      const polar = (angleDeg) => {
+        const rad = (angleDeg - 90) * Math.PI/180; // start from top
+        return { x: cx + (r * Math.cos(rad)), y: cy + (r * Math.sin(rad)) };
+      };
+      const start = polar(startAngle);
+      const end = polar(endAngle);
+      const largeArcFlag = sweep > 180 ? 1 : 0;
+      const d = `M ${cx} ${cy} L ${start.x} ${start.y} A ${r} ${r} 0 ${largeArcFlag} 1 ${end.x} ${end.y} Z`;
+      paths.push({ d, color: cat.color, label: cat.label, percent: cat.percent });
+    });
+    return paths;
+  }
+  const piePaths = buildPiePaths(categoriesArray);
+
+  // AI-powered narrative (explains business rationale for investment distribution)
+  const investmentNarrative = await generateInvestmentNarrative(openai, categoriesArray, enrichedItems.length);
+
+  const investmentOverview = categoriesArray.length ? {
+    totalIssues: enrichedItems.length,
+    categories: categoriesArray,
+    piePaths,
+    narrative: investmentNarrative
+  } : null;
 
   // Extract priorities section if present (editorial input). Otherwise auto-generate via AI.
   let prioritiesSection = preview.priorities ? {
@@ -301,6 +427,7 @@ export async function mapPreviewToTemplate(preview, openai = null){
     author: preview.author || 'Engineering',
     date: preview.date || dayjs().format('MMMM D, YYYY'),
     prioritiesSection,
+    investmentOverview,
     tocLeft,
     tocRight,
     leftItems,

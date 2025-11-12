@@ -32,8 +32,11 @@ const INSTRUCTIONS_CONTEXT = getInstructionsContext();
 /**
  * Generate an appropriate icon (single emoji) based on project context using OpenAI.
  * Falls back to a generic icon if OpenAI is not available or fails.
+ * @param {Object} openai - OpenAI client instance
+ * @param {Object} context - Project context
+ * @param {Set} usedIcons - Set of already-used icons to avoid duplicates
  */
-export async function generateIcon(openai, context) {
+export async function generateIcon(openai, context, usedIcons = new Set()) {
   if (!openai) {
     // Fallback icons if OpenAI not available
     const status = (context.status || '').toLowerCase();
@@ -43,6 +46,9 @@ export async function generateIcon(openai, context) {
   }
 
   try {
+    const usedList = Array.from(usedIcons).join(', ');
+    const excludeClause = usedList ? `\n\nDO NOT use these emojis (already used): ${usedList}` : '';
+    
     const prompt = `Choose a single, appropriate emoji for this project context. Return ONLY the emoji character, nothing else.
 
 Project Title: ${context.summary || ''}
@@ -50,7 +56,7 @@ Status: ${context.status || ''}
 Labels: ${(context.labels || []).join(', ') || 'none'}
 Bullets: ${(context.bullets || []).slice(0, 2).join('; ') || 'none'}
 
-Choose an emoji that best represents the project's domain, purpose, or status. Be concise.`;
+Choose an emoji that best represents the project's domain, purpose, or status. Be concise.${excludeClause}`;
 
     const response = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
@@ -60,10 +66,14 @@ Choose an emoji that best represents the project's domain, purpose, or status. B
 
     const emoji = (response.choices[0]?.message?.content || '').trim();
     // Validate that the result is actually an emoji (or at least a single character)
-    return emoji && emoji.length <= 2 ? emoji : '⚙️';
+    const validEmoji = emoji && emoji.length <= 2 ? emoji : '⚙️';
+    usedIcons.add(validEmoji);
+    return validEmoji;
   } catch (err) {
     console.error('Error generating icon:', err.message);
-    return '⚙️';
+    const fallback = '⚙️';
+    usedIcons.add(fallback);
+    return fallback;
   }
 }
 
@@ -303,4 +313,72 @@ export async function generatePriorities(openai, preview) {
   }
 }
 
-export default { generateIcon, generateClosingStatement, generateQuickWinsDescription, generateCardSummary, generateBullets, generatePriorities };
+/**
+ * Generate an AI-powered narrative for the Impact & Investment Overview section.
+ * Explains where engineering effort is going and the business rationale.
+ * Falls back to heuristic text if OpenAI is not available.
+ */
+export async function generateInvestmentNarrative(openai, categoriesArray, totalIssues) {
+  if (!openai || !categoriesArray || categoriesArray.length === 0) {
+    // Fallback heuristic
+    if (!categoriesArray || categoriesArray.length === 0) {
+      return 'Engineering efforts distributed across operational priorities.';
+    }
+    const top = categoriesArray[0];
+    if (categoriesArray.length === 1) {
+      return `This period focused primarily on ${top.label.toLowerCase()} (${top.percent}%).`;
+    }
+    const second = categoriesArray[1];
+    const tail = categoriesArray.slice(2).map(c => c.label.split(' ')[0]).join(', ');
+    return `Investment centered on ${top.label.toLowerCase()} (${top.percent}%) and ${second.label.toLowerCase()} (${second.percent}%)${tail ? `, with additional capacity on ${tail}` : ''}.`;
+  }
+
+  try {
+    const categoriesText = categoriesArray
+      .map(c => `- ${c.label}: ${c.count} issues (${c.percent}%)`)
+      .join('\n');
+
+    const prompt = `You are writing a short "Impact & Investment Overview" narrative for an engineering newsletter read by executives and company-wide staff (technical and non-technical).
+
+TASK: Generate 2-3 concise sentences (max 60 words total) that:
+1. Summarizes where engineering effort is going this period based on the categories below
+2. Explains the business rationale (why these areas matter: customer value, cost savings, efficiency, reliability, risk reduction, revenue impact)
+3. Uses clear, accessible language (avoid jargon)
+
+Categories & Distribution:
+${categoriesText}
+
+Total issues: ${totalIssues}
+
+REQUIREMENTS:
+- Focus on BUSINESS OUTCOMES and strategic value, not just category names
+- Connect effort to company goals (customer experience, revenue, operational excellence, risk management)
+- Keep it inspiring and forward-looking
+- Use simple language accessible to non-technical readers
+- Return ONLY the narrative text (2-3 sentences), nothing else`;
+
+    const response = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      max_tokens: 120,
+      temperature: 0.4,
+      messages: [{ role: 'user', content: prompt }]
+    });
+
+    const narrative = (response.choices[0]?.message?.content || '').trim();
+    return narrative || 'Engineering efforts distributed across operational priorities.';
+  } catch (err) {
+    console.error('Error generating investment narrative:', err.message);
+    // Fallback on error
+    if (!categoriesArray || categoriesArray.length === 0) {
+      return 'Engineering efforts distributed across operational priorities.';
+    }
+    const top = categoriesArray[0];
+    if (categoriesArray.length === 1) {
+      return `This period focused primarily on ${top.label.toLowerCase()} (${top.percent}%).`;
+    }
+    const second = categoriesArray[1];
+    return `Investment centered on ${top.label.toLowerCase()} (${top.percent}%) and ${second.label.toLowerCase()} (${second.percent}%).`;
+  }
+}
+
+export default { generateIcon, generateClosingStatement, generateQuickWinsDescription, generateCardSummary, generateBullets, generatePriorities, generateInvestmentNarrative };

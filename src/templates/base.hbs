@@ -21,6 +21,39 @@
     </div>
     {{/if}}
 
+    {{#if investmentOverview}}
+    <div style="background:#fff;padding:22px 24px;border-radius:8px;border:1px solid #e6eef8;margin-bottom:18px">
+      <div style="color:#0b79ff;font-weight:700;font-size:16px;margin-bottom:14px">Impact &amp; Investment Overview</div>
+      <div style="display:flex;flex-wrap:wrap;gap:24px;align-items:flex-start">
+        <div style="flex:0 0 140px">
+          <svg width="140" height="140" viewBox="0 0 120 120" role="img" aria-label="Engineering investment distribution" style="display:block">
+            {{#each investmentOverview.piePaths}}
+              <path d="{{d}}" fill="{{color}}" stroke="#fff" stroke-width="1"></path>
+            {{/each}}
+          </svg>
+        </div>
+        <div style="flex:1;min-width:240px">
+          <p style="margin:0 0 10px 0;font-size:14px;line-height:1.5;color:#333">{{investmentOverview.narrative}}</p>
+          <table style="width:100%;border-collapse:collapse;font-size:12px">
+            <thead>
+              <tr style="text-align:left;color:#555"><th style="padding:4px 6px">Category</th><th style="padding:4px 6px">Issues</th><th style="padding:4px 6px">% Share</th></tr>
+            </thead>
+            <tbody>
+              {{#each investmentOverview.categories}}
+                <tr>
+                  <td style="padding:4px 6px"><span style="display:inline-block;width:10px;height:10px;background:{{color}};border-radius:2px;margin-right:6px;vertical-align:middle"></span>{{label}}</td>
+                  <td style="padding:4px 6px">{{count}}</td>
+                  <td style="padding:4px 6px">{{percent}}%</td>
+                </tr>
+              {{/each}}
+            </tbody>
+          </table>
+          <div style="margin-top:8px;font-size:11px;color:#777">Based on {{investmentOverview.totalIssues}} active/featured items this period.</div>
+        </div>
+      </div>
+    </div>
+    {{/if}}
+
     <div style="height:16px"></div>
 
     {{#if tocLeft}}

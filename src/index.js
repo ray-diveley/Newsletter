@@ -12,6 +12,7 @@ import { buildJql, searchAllIssues } from './lib/jira.js';
 import { summarizeExecutive, summarizeOneLiner } from './lib/summarizer.js';
 import { mapPreviewToTemplate } from './lib/mapper.js';
 import { renderNewsletter } from './lib/render.js';
+import Handlebars from 'handlebars';
 
 
 
@@ -25,6 +26,9 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 const port = process.env.PORT || 3100;
+
+// Serve static files (CSS, etc.) from public directory
+app.use(express.static(path.resolve(__dirname, '..', 'public')));
 
 // ----- Env
 const email = process.env.JIRA_EMAIL;
@@ -321,7 +325,22 @@ app.get('/preview.html', async (req, res) => {
 
     // Map preview to template shape and render
     const data = await mapPreviewToTemplate(preview, openai);
-    const html = await renderNewsletter(data);
+    // Theme selection: default (base) or cool
+    const theme = (req.query.theme || 'base').toString();
+    if (theme === 'cool') {
+      try {
+        const coolPath = path.resolve(__dirname, 'templates', 'cool.hbs');
+        const tplSrc = await fs.readFile(coolPath, 'utf8');
+        const tpl = Handlebars.compile(tplSrc);
+        const html = tpl(data);
+        res.setHeader('Content-Type', 'text/html; charset=utf-8');
+        return res.send(html);
+      } catch (e) {
+        console.error('Failed to render cool theme, falling back to base:', e.message || e);
+      }
+    }
+
+    const html = await renderNewsletter(data); // base theme fallback
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.send(html);
   } catch (err) {
