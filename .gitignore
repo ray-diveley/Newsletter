@@ -9,9 +9,9 @@ node_modules/
 # Cache
 .cache/
 
-# Generated files
-newsletter.html
-newsletter*.html
+# Generated files - HTML previews
+*.html
+nul
 
 # Logs
 *.log

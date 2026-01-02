@@ -10,11 +10,27 @@ import OpenAI from 'openai';
 import { parseDateParam, isWithinInclusive, extractTextFromADF, cleanBulletLine, stripNames, capWords, randomInt } from './lib/utils.js';
 import { buildJql, searchAllIssues } from './lib/jira.js';
 import { summarizeExecutive, summarizeOneLiner } from './lib/summarizer.js';
-import { mapPreviewToTemplate } from './lib/mapper.js';
+import { mapPreviewToTemplate, aggregateYearStats } from './lib/mapper.js';
+import { generateYearEndSummary } from './lib/icon-generator.js';
 import { renderNewsletter } from './lib/render.js';
 import Handlebars from 'handlebars';
 
+// Register Handlebars helpers
+Handlebars.registerHelper('gt', function(a, b) {
+  return a > b;
+});
 
+Handlebars.registerHelper('gte', function(a, b) {
+  return a >= b;
+});
+
+Handlebars.registerHelper('lt', function(a, b) {
+  return a < b;
+});
+
+Handlebars.registerHelper('eq', function(a, b) {
+  return a === b;
+});
 
 // ----- ESM __dirname
 const __filename = fileURLToPath(import.meta.url);
@@ -141,6 +157,7 @@ app.get('/preview', async (req,res)=>{
 
     const from = parseDateParam(fromRaw);
     const to = parseDateParam(toRaw);
+    console.log(`Parsed dates: from=${from}, to=${to}, from.getMonth()=${from?.getMonth()}, fromRaw=${fromRaw}`);
     if (!from || !to) {
       return res.status(400).json({ error: 'Invalid date format. Use YYYY-MM-DD for both `from` and `to`.' });
     }
@@ -222,7 +239,8 @@ app.get('/preview', async (req,res)=>{
         comments,
         bullets,
         oneLiner,
-        url: `https://${domain}/browse/${i.key}`
+        url: `https://${domain}/browse/${i.key}`,
+        description: extractTextFromADF(i.fields?.description)
       };
     }));
 
@@ -238,7 +256,7 @@ app.get('/preview', async (req,res)=>{
           ? `project = "${quickWinsProjects[0]}"` 
           : `project IN (${quickWinsProjects.map(p => `"${p}"`).join(', ')})`;
         
-        const quickWinsJql = `${projectsClause} AND issuetype = "${quickWinsIssueType}" AND resolutiondate >= -4w ORDER BY resolutiondate DESC`;
+        const quickWinsJql = `${projectsClause} AND type = "${quickWinsIssueType}" AND resolutiondate >= -30d ORDER BY resolved DESC`;
         console.log('Quick Wins JQL:', quickWinsJql); // Debug logging
         
   const quickWins = await searchAllIssues(domain, auth, quickWinsJql);
@@ -254,13 +272,98 @@ app.get('/preview', async (req,res)=>{
       }
     }
 
+    // --- Year-End Summary (for December newsletters)
+    let yearEndSummary = null;
+    // Check if fromRaw is December (avoid timezone issues) - now checking for 2025-12 to show 2025 year-end stats
+    const isDecember = fromRaw && fromRaw.startsWith('2025-12');
+    console.log(`Date check: from=${from}, fromRaw=${fromRaw}, isDecember=${isDecember}, finalProjects=${finalProjects.length}`);
+    
+    if (isDecember && finalProjects.length > 0) {
+      try {
+        console.log('Fetching year-end stats...');
+        
+        // Fetch 2024 and 2025 completed issues in parallel
+        const projectsClause = finalProjects.length === 1 
+          ? `project = ${finalProjects[0]}` 
+          : `project IN (${finalProjects.join(', ')})`;
+        
+        // Use statusCategory = Done and statusCategoryChangedDate (correct JIRA field names)
+        const jql2024 = `${projectsClause} AND statusCategory = Done AND statusCategoryChangedDate >= "2024-01-01" AND statusCategoryChangedDate <= "2024-12-31"`;
+        const jql2025 = `${projectsClause} AND statusCategory = Done AND statusCategoryChangedDate >= "2025-01-01" AND statusCategoryChangedDate <= "2025-12-31"`;
+        
+        console.log('Year-end JQL 2024:', jql2024);
+        console.log('Year-end JQL 2025:', jql2025);
+        
+        // Fetch only project stats (skip bugs and quick wins to avoid rate limiting)
+        const [issues2024, issues2025] = await Promise.all([
+          searchAllIssues(domain, auth, jql2024),
+          searchAllIssues(domain, auth, jql2025)
+        ]);
+
+        console.log(`Year stats fetched: 2024=${issues2024.length}, 2025=${issues2025.length}`);
+
+        // Use actual values provided by user
+        const actualQuickWins2024 = 46;
+        const actualQuickWins2025 = 51;
+        const actualBugs2024 = 1185;
+        const actualBugs2025 = 1330;
+        console.log(`Using provided counts: QuickWins 2024=${actualQuickWins2024}, 2025=${actualQuickWins2025}, Bugs 2024=${actualBugs2024}, 2025=${actualBugs2025}`);
+        
+        const stats2024 = aggregateYearStats(issues2024);
+        const stats2025 = aggregateYearStats(issues2025);
+        
+        const summary = await generateYearEndSummary(openai, stats2024, stats2025);
+        
+        const growth = stats2024.total > 0 ? Math.round(((stats2025.total - stats2024.total) / stats2024.total) * 100) : 0;
+        const quickWinsGrowth = actualQuickWins2024 > 0 ? Math.round(((actualQuickWins2025 - actualQuickWins2024) / actualQuickWins2024) * 100) : 0;
+        const bugsChange = actualBugs2025 - actualBugs2024;
+        const bugsChangePercent = actualBugs2024 > 0 ? Math.round((bugsChange / actualBugs2024) * 100) : 0;
+
+        // Calculate percentage for bar chart (2024 relative to 2025)
+        const maxProjects = Math.max(stats2024.total, stats2025.total);
+        const year2024Percent = maxProjects > 0 ? Math.round((stats2024.total / maxProjects) * 100) : 0;
+
+        // Extract top 10 categories from 2025 with their counts
+        const top2025Categories = Object.entries(stats2025.categories)
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 10)
+          .map(([key, count]) => ({
+            name: key.replace(/_/g, ' '),
+            count: count,
+            percent: stats2025.total > 0 ? Math.round((count / stats2025.total) * 100) : 0
+          }));
+
+        yearEndSummary = {
+          year2024: stats2024.total,
+          year2025: stats2025.total,
+          year2024Percent: year2024Percent,
+          growth: growth,
+          narrative: summary.narrative,
+          topCategory2024: stats2024.topCategory,
+          topCategory2025: stats2025.topCategory,
+          topCategories2025: top2025Categories,
+          quickWins2024: actualQuickWins2024,
+          quickWins2025: actualQuickWins2025,
+          quickWinsGrowth: quickWinsGrowth,
+          bugs2024: actualBugs2024,
+          bugs2025: actualBugs2025,
+          bugsChange: bugsChange,
+          bugsChangePercent: bugsChangePercent
+        };
+      } catch (yearError) {
+        console.error('Error fetching year-end stats:', yearError.message);
+        // Continue without year-end data
+      }
+    }
+
     // --- Final Response
     const response = {
       title: req.query.title || 'Engineering Update',
       author: req.query.author || 'Engineering',
       date: fromRaw, // Use the "from" date in YYYY-MM-DD format for correct title derivation
       issues: filtered,
-      quickWins: quickWinItems
+      quickWins: quickWinItems,
+      yearEndSummary: yearEndSummary
     };
 
     // Add priorities if provided as query parameters

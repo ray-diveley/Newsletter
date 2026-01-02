@@ -2,6 +2,25 @@
 
 These instructions ensure consistent monthly reproduction of the engineering newsletter for a company-wide audience (technical and non-technical staff), with a clear, concise focus on business outcomes. The newsletter features a two-column layout for project cards, a full-width "Quick Wins" section spanning both columns at the bottom with a link in the "In This Issue" section, and a single contextual icon next to project titles.
 
+## Outlook Email Compatibility Requirements
+
+**CRITICAL:** All HTML must be compatible with Microsoft Outlook email rendering engine.
+
+**Required HTML Patterns:**
+- Use HTML tables (`<table>`, `<tr>`, `<td>`) for ALL layout, including multi-column layouts
+- NO CSS Grid (`display: grid`)
+- NO CSS Flexbox (`display: flex`) - these do not work in Outlook
+- All styling must be inline CSS using the `style` attribute
+- Table attributes: Always use `cellpadding="0"`, `cellspacing="0"`, `border="0"`
+- Column widths: Use percentage-based widths (e.g., `width="48%"`) on `<td>` elements
+- Spacing: Use padding on `<td>` elements, not margins on inner elements
+- Background colors: Apply to `<td>` or `<table>` elements, not `<div>` elements when possible
+
+**Testing:**
+- Always test newsletter rendering in Outlook before sending
+- Check for text overlap, stacked cards, and broken layouts
+- Verify all sections display side-by-side as intended
+
 ## Content Tone & Audience
 
 **Audience:** Entire company (technical and non-technical staff).
@@ -98,31 +117,9 @@ In the `/preview` JSON response, include an optional `priorities` object (sent b
 - Border radius: 8px
 - Margin: 16px vertical separation (consistent spacing)
 
-**Heading:**
-- Font: Arial, 16px, bold
-- Color: Blue (#0b79ff)
-- Margin-bottom: 12px
-- Action-oriented (e.g., "Strategic Focus for November", "Q4 Priorities", "Why These Projects Matter")
+**This section has been removed from the newsletter template.**
 
-**Content:**
-- Font: Arial, 14px
-- Color: Dark grey (#333)
-- Line height: 1.6
-- 2-3 sentences maximum (150-200 words)
-- Tone: Professional, strategic, non-technical
-- Focus: Business outcomes, alignment, and decision-making rationale
-
-**Optional formatting:**
-- If provided in content, support simple markdown or plain text
-- Avoid HTML; content should be sanitized and escaped
-
-### Implementation Notes
-
-- **Data source:** Editorial team or engineering leadership provides priorities text for current month via `/preview` endpoint or configuration
-- **Rendering:** Conditional in template — only render if `prioritiesSection` object is present in mapper output
-- **Mapping:** `mapPreviewToTemplate` function checks for `preview.priorities` and includes it in output
-- **No automatic generation:** Priorities text is **not** AI-generated; it is provided by leadership as editorial input
-- **Outlook compatibility:** Uses same div/inline-CSS structure as cards; no tables or special formatting
+The Strategic Focus/Priorities section is no longer included in the newsletter design.
 
 ## "In This Issue" Section
 

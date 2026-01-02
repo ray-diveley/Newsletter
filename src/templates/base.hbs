@@ -8,50 +8,217 @@
 <body style="margin:0;background:#f5f7fb;font-family:Arial,Helvetica,sans-serif">
   <div style="max-width:1200px;margin:18px auto;padding:20px">
     <div style="background:#0b79ff;color:#fff;padding:12px 20px;border-radius:8px;text-align:center;font-size:20px;font-weight:700" id="top">
-      <span style="margin-right:10px">📢</span>
+      <span style="margin-right:10px">🎆</span>
       {{title}}
     </div>
 
     <div style="height:16px"></div>
 
-    {{#if prioritiesSection}}
-    <div style="background:#fff;padding:20px;border-radius:8px;border-left:5px solid #0b79ff;margin-bottom:16px">
-      <div style="color:#0b79ff;font-weight:700;font-size:16px;margin-bottom:12px">{{prioritiesSection.heading}}</div>
-      <div style="color:#333;font-size:14px;line-height:1.6">{{prioritiesSection.content}}</div>
-    </div>
+    {{#if yearEndSummary}}
+    <!-- Year in Review - Unified section with border -->
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:30px;border:3px solid #0b79ff;border-radius:8px;background:#f0f7ff">
+      <tr>
+        <td style="padding:30px 24px">
+
+          <!-- Header -->
+          <table width="100%" cellpadding="0" cellspacing="0" border="0">
+            <tr>
+              <td style="text-align:center;padding-bottom:25px">
+                <div style="font-size:28px;font-weight:700;color:#0b79ff">🎊 2025 Year in Review</div>
+              </td>
+            </tr>
+          </table>
+
+          <!-- Metric Cards - Single Row -->
+          <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:20px">
+            <tr>
+              <!-- Projects Card -->
+              <td width="32%" valign="top" style="padding:0 1% 0 0">
+                <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#fff;border:2px solid #28a745;border-radius:6px">
+                  <tr>
+                    <td style="padding:20px">
+                      <div style="font-size:11px;color:#888;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px">📊 Projects Delivered</div>
+                      <div style="margin-bottom:8px">
+                        <span style="font-size:36px;font-weight:700;color:#28a745">{{yearEndSummary.year2025}}</span>
+                        <span style="font-size:16px;color:#aaa;margin-left:8px;text-decoration:line-through">{{yearEndSummary.year2024}}</span>
+                      </div>
+                      <div style="font-size:12px">
+                        <span style="background:#28a745;color:#fff;padding:3px 8px;border-radius:10px;font-weight:700">↗ +{{yearEndSummary.growth}}%</span>
+                        <span style="color:#999;margin-left:6px">vs 2024</span>
+                      </div>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+
+              <!-- Bugs Card -->
+              <td width="32%" valign="top" style="padding:0 1%">
+                <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#fff;border:2px solid #dc3545;border-radius:6px">
+                  <tr>
+                    <td style="padding:20px">
+                      <div style="font-size:11px;color:#888;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px">🐛 Bugs Squashed</div>
+                      <div style="margin-bottom:8px">
+                        <span style="font-size:36px;font-weight:700;color:#dc3545">{{yearEndSummary.bugs2025}}</span>
+                        <span style="font-size:16px;color:#aaa;margin-left:8px;text-decoration:line-through">{{yearEndSummary.bugs2024}}</span>
+                      </div>
+                      <div style="font-size:12px">
+                        {{#if yearEndSummary.bugsChangePercent}}
+                          {{#if (gt yearEndSummary.bugsChange 0)}}
+                            <span style="background:#dc3545;color:#fff;padding:3px 8px;border-radius:10px;font-weight:700">↗ +{{yearEndSummary.bugsChangePercent}}%</span>
+                          {{else}}
+                            <span style="background:#28a745;color:#fff;padding:3px 8px;border-radius:10px;font-weight:700">↘ {{yearEndSummary.bugsChangePercent}}%</span>
+                          {{/if}}
+                        {{else}}
+                          <span style="background:#6c757d;color:#fff;padding:3px 8px;border-radius:10px;font-weight:700">→ Same</span>
+                        {{/if}}
+                        <span style="color:#999;margin-left:6px">vs 2024</span>
+                      </div>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+
+              <!-- Quick Wins Card -->
+              <td width="32%" valign="top" style="padding:0 0 0 1%">
+                <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#fff;border:2px solid #ff9800;border-radius:6px">
+                  <tr>
+                    <td style="padding:20px">
+                      <div style="font-size:11px;color:#888;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px">⚡ Quick Wins</div>
+                      <div style="margin-bottom:8px">
+                        <span style="font-size:36px;font-weight:700;color:#ff9800">{{yearEndSummary.quickWins2025}}</span>
+                        <span style="font-size:16px;color:#aaa;margin-left:8px;text-decoration:line-through">{{yearEndSummary.quickWins2024}}</span>
+                      </div>
+                      <div style="font-size:12px">
+                        {{#if yearEndSummary.quickWinsGrowth}}
+                          <span style="background:#ff9800;color:#fff;padding:3px 8px;border-radius:10px;font-weight:700">↗ +{{yearEndSummary.quickWinsGrowth}}%</span>
+                        {{else}}
+                          <span style="background:#ff9800;color:#fff;padding:3px 8px;border-radius:10px;font-weight:700">New!</span>
+                        {{/if}}
+                        <span style="color:#999;margin-left:6px">vs 2024</span>
+                      </div>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+          </table>
+
+          {{#if yearEndSummary.topCategories2025}}
+          <!-- Top Focus Areas of 2025 -->
+          <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#fff;border:1px solid #d0e7ff;border-radius:6px;margin-bottom:20px">
+            <tr>
+              <td style="padding:20px">
+                <div style="font-weight:700;font-size:18px;color:#0b79ff;margin-bottom:15px">🎯 Top Focus Areas of 2025</div>
+                <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                  <tr>
+                    <td width="48%" valign="top" style="padding-right:2%">
+                      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                        {{#each yearEndSummary.topCategories2025}}
+                        {{#if @first}}
+                        <tr>
+                          <td style="padding:6px 0;font-size:14px;color:#333;line-height:1.5">
+                            <span style="color:#0b79ff;margin-right:6px">•</span>
+                            <span style="font-weight:600;text-transform:capitalize">{{this.name}}</span>
+                            <span style="color:#999"> ({{this.count}}, {{this.percent}}%)</span>
+                          </td>
+                        </tr>
+                        {{else}}
+                        {{#unless (eq @index 0)}}
+                        {{#if (lt @index 5)}}
+                        <tr>
+                          <td style="padding:6px 0;font-size:14px;color:#333;line-height:1.5">
+                            <span style="color:#0b79ff;margin-right:6px">•</span>
+                            <span style="font-weight:600;text-transform:capitalize">{{this.name}}</span>
+                            <span style="color:#999"> ({{this.count}}, {{this.percent}}%)</span>
+                          </td>
+                        </tr>
+                        {{/if}}
+                        {{/unless}}
+                        {{/if}}
+                        {{/each}}
+                      </table>
+                    </td>
+                    <td width="48%" valign="top" style="padding-left:2%">
+                      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                        {{#each yearEndSummary.topCategories2025}}
+                        {{#if (gte @index 5)}}
+                        <tr>
+                          <td style="padding:6px 0;font-size:14px;color:#333;line-height:1.5">
+                            <span style="color:#0b79ff;margin-right:6px">•</span>
+                            <span style="font-weight:600;text-transform:capitalize">{{this.name}}</span>
+                            <span style="color:#999"> ({{this.count}}, {{this.percent}}%)</span>
+                          </td>
+                        </tr>
+                        {{/if}}
+                        {{/each}}
+                      </table>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+          </table>
+          {{/if}}
+
+          <!-- Narrative -->
+          <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#fff;border:1px solid #d0e7ff;border-radius:6px">
+            <tr>
+              <td style="padding:20px">
+                <p style="margin:0;font-size:14px;line-height:1.7;color:#333">{{yearEndSummary.narrative}}</p>
+              </td>
+            </tr>
+          </table>
+
+        </td>
+      </tr>
+    </table>
     {{/if}}
 
     {{#if investmentOverview}}
-    <div style="background:#fff;padding:22px 24px;border-radius:8px;border:1px solid #e6eef8;margin-bottom:18px">
-      <div style="color:#0b79ff;font-weight:700;font-size:16px;margin-bottom:14px">Impact &amp; Investment Overview</div>
-      <div style="display:flex;flex-wrap:wrap;gap:24px;align-items:flex-start">
-        <div style="flex:0 0 140px">
-          <svg width="140" height="140" viewBox="0 0 120 120" role="img" aria-label="Engineering investment distribution" style="display:block">
-            {{#each investmentOverview.piePaths}}
-              <path d="{{d}}" fill="{{color}}" stroke="#fff" stroke-width="1"></path>
-            {{/each}}
-          </svg>
-        </div>
-        <div style="flex:1;min-width:240px">
-          <p style="margin:0 0 10px 0;font-size:14px;line-height:1.5;color:#333">{{investmentOverview.narrative}}</p>
-          <table style="width:100%;border-collapse:collapse;font-size:12px">
-            <thead>
-              <tr style="text-align:left;color:#555"><th style="padding:4px 6px">Category</th><th style="padding:4px 6px">Issues</th><th style="padding:4px 6px">% Share</th></tr>
-            </thead>
-            <tbody>
-              {{#each investmentOverview.categories}}
-                <tr>
-                  <td style="padding:4px 6px"><span style="display:inline-block;width:10px;height:10px;background:{{color}};border-radius:2px;margin-right:6px;vertical-align:middle"></span>{{label}}</td>
-                  <td style="padding:4px 6px">{{count}}</td>
-                  <td style="padding:4px 6px">{{percent}}%</td>
-                </tr>
-              {{/each}}
-            </tbody>
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#fff;border:1px solid #e6eef8;border-radius:6px;margin-bottom:20px">
+      <tr>
+        <td style="padding:22px 24px">
+          <div style="color:#0b79ff;font-weight:700;font-size:16px;margin-bottom:14px">Impact &amp; Investment Overview</div>
+
+          <table width="100%" cellpadding="0" cellspacing="0" border="0">
+            <tr>
+              <!-- Left column: Investment Distribution -->
+              <td width="45%" valign="top" style="padding-right:20px">
+                <div style="font-weight:600;font-size:13px;color:#333;margin-bottom:12px">Engineering Investment Distribution</div>
+                <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                  {{#each investmentOverview.categories}}
+                  <tr>
+                    <td style="padding:4px 0">
+                      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                        <tr>
+                          <td width="140" style="font-size:12px;color:#555;padding-right:8px">{{label}}</td>
+                          <td style="padding-right:8px">
+                            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#e9ecef;height:18px;border-radius:3px">
+                              <tr>
+                                <td width="{{percent}}%" style="background:{{color}};height:18px;border-radius:3px 0 0 3px"></td>
+                                <td style="background:#e9ecef"></td>
+                              </tr>
+                            </table>
+                          </td>
+                          <td width="45" style="font-size:12px;color:#555;text-align:right">{{percent}}%</td>
+                        </tr>
+                      </table>
+                    </td>
+                  </tr>
+                  {{/each}}
+                </table>
+                <div style="margin-top:12px;font-size:11px;color:#777">Based on {{investmentOverview.totalIssues}} active/featured items this period.</div>
+              </td>
+
+              <!-- Right column: Narrative -->
+              <td width="55%" valign="top" style="padding-left:20px">
+                <p style="margin:0;font-size:14px;line-height:1.6;color:#333">{{investmentOverview.narrative}}</p>
+              </td>
+            </tr>
           </table>
-          <div style="margin-top:8px;font-size:11px;color:#777">Based on {{investmentOverview.totalIssues}} active/featured items this period.</div>
-        </div>
-      </div>
-    </div>
+        </td>
+      </tr>
+    </table>
     {{/if}}
 
     <div style="height:16px"></div>
@@ -90,7 +257,7 @@
         <td style="vertical-align:top;width:50%;padding:0">
           {{#each leftItems}}
             <div id="{{id}}" style="background:#fff;padding:20px;border-radius:8px;margin-bottom:20px;border-left:5px solid {{color}}">
-              <div style="font-size:18px;color:#0b79ff;font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:10px"><span style="width:30px;height:30px;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;color:#fff;font-size:16px;background:{{color}}">{{icon}}</span> {{heading}}{{#if status}} — {{status}}{{/if}}</div>
+              <div style="font-size:18px;color:#0b79ff;font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:10px"><span style="width:30px;height:30px;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;color:#fff;font-size:16px;background:{{color}};margin-right:8px">{{icon}}</span> {{heading}}{{#if status}} — {{status}}{{/if}}</div>
               <div style="margin-bottom:10px"><span style="display:inline-block;background:{{categoryColor}};color:#fff;padding:3px 8px;border-radius:4px;font-size:11px;font-weight:600;letter-spacing:0.5px">{{categoryLabel}}</span></div>
               {{#if cardSummary}}<div style="font-size:14px;color:#333;line-height:1.6;margin-bottom:12px;font-style:italic">{{cardSummary}}</div>{{/if}}
               <div style="font-size:14px;color:#333;line-height:1.6;margin-bottom:12px">{{{body}}}</div>
@@ -102,7 +269,7 @@
         <td style="vertical-align:top;width:50%;padding:0">
           {{#each rightItems}}
             <div id="{{id}}" style="background:#fff;padding:20px;border-radius:8px;margin-bottom:20px;border-left:5px solid {{color}}">
-              <div style="font-size:18px;color:#0b79ff;font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:10px"><span style="width:30px;height:30px;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;color:#fff;font-size:16px;background:{{color}}">{{icon}}</span> {{heading}}{{#if status}} — {{status}}{{/if}}</div>
+              <div style="font-size:18px;color:#0b79ff;font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:10px"><span style="width:30px;height:30px;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;color:#fff;font-size:16px;background:{{color}};margin-right:8px">{{icon}}</span> {{heading}}{{#if status}} — {{status}}{{/if}}</div>
               <div style="margin-bottom:10px"><span style="display:inline-block;background:{{categoryColor}};color:#fff;padding:3px 8px;border-radius:4px;font-size:11px;font-weight:600;letter-spacing:0.5px">{{categoryLabel}}</span></div>
               {{#if cardSummary}}<div style="font-size:14px;color:#333;line-height:1.6;margin-bottom:12px;font-style:italic">{{cardSummary}}</div>{{/if}}
               <div style="font-size:14px;color:#333;line-height:1.6;margin-bottom:12px">{{{body}}}</div>

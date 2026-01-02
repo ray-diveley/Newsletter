@@ -102,6 +102,89 @@ git remote add origin git@github.com:your-org/jira-newsletter.git
 git push -u origin main
 ```
 
+## Writing Style & Content Quality
+
+The newsletter emphasizes **natural, engaging language** that communicates business impact without robotic patterns. AI-generated content is guided by specific prompts to produce varied, conversational output.
+
+### Card Summary Principles
+**Goal**: 25 words max, structure varies, focuses on innovation + business impact, avoids overused verbs like "Enhanced/Enabled/Streamlined"
+
+**December 2025 Examples** (demonstrating varied, engaging style):
+- "Transforms client management workflow with automated engagement tracking, enabling advisors to focus on strategic relationships rather than manual updates."
+- "Consolidates recruitment list management into a single interface, reducing cognitive load and enabling faster decision-making for hiring managers."
+- "Provides granular control over bidding outcomes, allowing project managers to optimize resource allocation based on real-time market dynamics."
+
+**When to customize**: For key strategic initiatives or cross-functional projects, write custom summaries in `mapper.js` that highlight specific business value. Otherwise, rely on AI with strong prompts.
+
+### Bullet Point Principles
+**Goal**: 2-3 bullets, 12 words each, natural conversational language with varied structure (avoid forcing every bullet to start with action verbs)
+
+**December 2025 Examples** (showing natural variation):
+- "Advisors now see client interaction history automatically, no manual tracking required"
+- "New dashboard consolidates three separate recruitment tools into one unified view"
+- "Bidding outcomes can be adjusted in real-time based on capacity and priority"
+- "The system automatically applies pricing rules without requiring manual calculations"
+
+**AI Prompt Guidance**: Emphasize "conversational language" and "varied sentence structures" to avoid robotic patterns like "Delivered X", "Enabled Y" on every line.
+
+### Closing Statement Principles
+**Goal**: Enthusiastic, specific to the work delivered, reinforces business value or team momentum, uses varied language
+
+**December 2025 Examples** (showing diverse patterns):
+- "🚀 Excited for the scalability these infrastructure improvements will unlock as we grow!"
+- "✨ Bringing measurable efficiency gains to the team!"
+- "🎯 Aligned with our strategic priorities for Q4!"
+- "💡 Solving a long-standing pain point!"
+- "🌟 Opening new possibilities for client engagement!"
+- "These enhancements are creating a scalable model for onboarding future whitelabeled clients!"
+
+**AI Prompt Guidance**: Explicitly instruct to avoid repetitive patterns like "Exciting..." or "Looking forward to..." - vary emojis, sentence structures, and ways to express impact.
+
+**When to customize**: For milestone releases or new client launches, write custom closings in `mapper.js` that celebrate the specific achievement.
+
+### Technical Implementation Notes
+- **Quick Wins JQL**: `resolutiondate >= -30d` (shows items resolved in the last 30 days, ordered by resolved date)
+- **Issue Filtering**: Exclude administrative or duplicate issues (e.g., "1099 MISC copy available in users account") via `mapper.js` filter logic
+- **Visualization**: Horizontal bar chart with two-column layout - left side shows "Engineering Investment Distribution" with labeled bars (category name, bar, percentage), right side shows AI-generated narrative explaining the distribution strategy
+- **Bar Chart Style**: Each category displays on one line with label (140px), progress bar (flexible width), and percentage (45px right-aligned) for clean, scannable visualization
+- **Icon Spacing**: 8-12px margin-right for visual balance
+- **JIRA Fields**: Fetches `description` field for richer AI summarization context
+
+### Monthly Workflow: Content Quality Review
+1. **Run the newsletter** with your date range
+2. **Review card summaries**: Do they sound engaging and varied? If too generic, consider custom summaries for key initiatives
+3. **Review bullet points**: Do they sound natural and conversational? Should vary in structure (not all starting with verbs)
+4. **Review closing statements**: Does it match the energy and significance of the month's work?
+5. **Edit `mapper.js`** if you identify patterns worth customizing (major releases, new clients, strategic pivots)
+
+### Year-End Summary (December Newsletters)
+When you generate a newsletter for December (e.g., `from=2025-12-01`), the system automatically includes a **Year in Review** section at the top with a modern gradient background and metric cards showing:
+
+**Visual Design:**
+- Purple gradient background with white metric cards
+- Grid layout (responsive, 4 cards across on desktop)
+- Each card has a decorative gradient accent in the top-right corner
+- Growth indicators with directional arrows (↗ up, ↘ down, → same)
+- Strikethrough on previous year's numbers for clear before/after comparison
+
+**Metrics Displayed:**
+- 📊 **Projects Delivered** - Total projects completed with % growth badge
+- 🐛 **Bugs Squashed** - Total bugs fixed with change indicator
+- ⚡ **Quick Wins** - Quick wins delivered (shows "New!" if none in 2024)
+- 🎯 **Top Focus Area** - Primary investment category for the year
+- **AI-generated narrative** - Contextual summary of the year's achievements
+
+**Data Sources (JQL):**
+```
+Projects 2024/2025:
+  project = EBP AND statusCategory = Done AND statusCategoryChangedDate >= "YYYY-01-01" AND statusCategoryChangedDate <= "YYYY-12-31"
+
+Bugs 2024/2025:
+  issuetype = Bug AND statusCategory = Done AND statusCategoryChangedDate >= "YYYY-01-01" AND statusCategoryChangedDate <= "YYYY-12-31"
+```
+
+You can run `node check-year-stats.js` to preview the year-over-year statistics before generating the newsletter.
+
 ## License
 MIT – see `LICENSE`.
 

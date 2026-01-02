@@ -11,11 +11,11 @@ export function buildJql(projectKeys, statusList){
 export async function searchAllIssues(domain, auth, jql){
   const pageSize=100; let startAt=0; let all=[];
   while(true){
-    const fieldsParam = 'summary,status,resolutiondate,statuscategorychangedate,labels';
-    
+    const fieldsParam = 'summary,status,resolutiondate,statuscategorychangedate,labels,description';
+
     const r = await axios.get(`https://${domain}/rest/api/3/search/jql`, {
-      headers: { 
-        Authorization: `Basic ${auth}`, 
+      headers: {
+        Authorization: `Basic ${auth}`,
         Accept: 'application/json'
       },
       params: {
@@ -26,7 +26,10 @@ export async function searchAllIssues(domain, auth, jql){
       }
     });
     const issues=r.data.issues||[]; all=all.concat(issues);
-    if (startAt+pageSize >= (r.data.total||0)) break; startAt+=pageSize;
+    console.log(`Fetched ${issues.length} issues (${startAt} to ${startAt + issues.length}), total available: ${r.data.total}, isLast: ${r.data.isLast}`);
+    if (issues.length === 0 || issues.length < pageSize || r.data.isLast === true) break;
+    if (all.length > 50000) { console.log(`WARNING: Hit safety limit at ${all.length} issues`); break; }
+    startAt+=pageSize;
   }
   return all;
 }

@@ -1,6 +1,6 @@
 import dayjs from 'dayjs';
 import { cleanBulletLine, stripNames, capWords, extractTextFromADF } from './utils.js';
-import { generateIcon, generateClosingStatement, generateQuickWinsDescription, generateCardSummary, generateBullets, generatePriorities, generateInvestmentNarrative } from './icon-generator.js';
+import { generateIcon, generateClosingStatement, generateQuickWinsDescription, generateCardSummary, generateBullets, generatePriorities, generateInvestmentNarrative, generateYearEndSummary } from './icon-generator.js';
 import cache from './simple-cache.js';
 
 function escapeHtml(str){
@@ -51,6 +51,43 @@ function cleanMarkdownAndTeamPlaceholders(text) {
 }
 
 /**
+ * Aggregate year statistics from JIRA issues
+ */
+function aggregateYearStats(issues) {
+  // Use the categorizeIssue function defined below
+  const categoryCounts = {};
+
+  issues.forEach(issue => {
+    // Map JIRA API fields to the format expected by categorizeIssue
+    const mappedIssue = {
+      _originalSummary: issue.fields?.summary || issue.summary || '',
+      _originalLabels: issue.fields?.labels || [],
+      _originalComments: [],
+      summary: issue.fields?.summary || issue.summary || '',
+      heading: issue.fields?.summary || issue.summary || '',
+      description: issue.fields?.description?.content?.[0]?.content?.[0]?.text ||
+                   issue.fields?.description ||
+                   issue.description || '',
+      status: issue.fields?.status?.name || issue.status || '',
+      labels: issue.fields?.labels || []
+    };
+
+    const category = categorizeIssue(mappedIssue);
+    categoryCounts[category] = (categoryCounts[category] || 0) + 1;
+  });
+
+  const topCategory = Object.entries(categoryCounts)
+    .sort((a, b) => b[1] - a[1])[0];
+
+  return {
+    total: issues.length,
+    topCategory: topCategory ? topCategory[0].replace(/_/g, ' ') : 'general improvements',
+    topCategoryCount: topCategory ? topCategory[1] : 0,
+    categories: categoryCounts
+  };
+}
+
+/**
  * Remove metadata labels and technical codes from bullet points per instructions.
  * Removes: "highlight:", "status:", "note:", "update:", "progress:", "EBP-XXX", etc.
  */
@@ -70,10 +107,59 @@ function cleanBulletMetadata(text) {
   // Remove sprint references (e.g., "sprint 12", "sprint-12")
   cleaned = cleaned.replace(/sprint\s*-?\d+/i, '');
   
+  // Remove specific unwanted phrases (e.g., "1099 MISC copy")
+  cleaned = cleaned.replace(/1099\s*MISC\s*copy/gi, '');
+  
   // Clean up multiple spaces
   cleaned = cleaned.replace(/\s+/g, ' ').trim();
   
   return cleaned;
+}
+
+/**
+ * Categorize a JIRA issue based on its content
+ */
+function categorizeIssue(issue){
+  const summary = issue._originalSummary || issue.summary || issue.heading || '';
+  const status = issue.status || '';
+  const labels = issue._originalLabels || [];
+  const comments = issue._originalComments || [];
+  const commentsText = comments.map(c => c.text || '').join(' ');
+  const text = `${summary} ${status} ${issue.heading || ''} ${issue.description || ''} ${commentsText}`.toLowerCase();
+  const labelText = labels.map(l=>String(l).toLowerCase()).join(' ');
+  const has = (re) => re.test(text) || re.test(labelText);
+  
+  // Client Experience (portals, UI/UX, client-facing improvements, first experience) - check first as it's specific
+  if (has(/client portal|customer portal|front[- ]end portal|user portal|self[- ]service|first experience/)) return 'client_experience';
+  
+  // Integration & APIs (third-party integrations, API work, major integration projects) - prioritize over product features
+  if (has(/integration|\ api[\s\b]|sso|azure ad|authentication.*api|maven|hubspot|nexmo|dotdigital|third[- ]party|webhook|consent.*recording|expert.*network|authentication.*permission/)) return 'integration_apis';
+  
+  // Financial Systems (billing, payments, revenue, invoicing) - specific financial keywords
+  if (has(/\bbilling\b|\binvoice\b|revenue|payment|pricing|\bfinance\b|financial system|discount program|incentive program|accrual/)) return 'financial_systems';
+  
+  // Internal Tools & Admin (admin panels, internal tooling, system management)
+  if (has(/admin tool|contact management|\bcontact.{0,15}table|account management|client contact|master.*tool|duplicate|system tool|internal tool|crm|feasibility.*boost/)) return 'internal_tools';
+  
+  // Data & Analytics (reporting, data management, analytics tools)
+  if (has(/\bdata\b.*tool|\breport|analytic|business intelligence|desk research|purchased data|centrali[sz]ed.*data|kpi|ad.*intel|m3mi/)) return 'data_analytics';
+  
+  // Product & Features (new offerings, major features, product development, platform products) - broader catch-all for products
+  if (has(/bidding|dragonfly|audience.*dynamic|dynamic.*audience|wallet.*note|registration.*process|discount.*calculat|list.*match|qualstage|m3teor|verification.*tool|bulk.*email|campaign.*automat/)) return 'product_features';
+  
+  // Testing & Quality (UAT, testing, QA) - after feature categories so it doesn't override
+  if (has(/\buat\b|user acceptance test|testing phase|test coverage|qa phase|quality assurance|bug fix.*phase|defect/)) return 'testing_quality';
+  
+  // Performance & Reliability (optimization, stability, performance)
+  if (has(/performance|speed improvement|latency|optimi[zs]ation|scalab|throughput|efficiency gain|reliability|stability|monitor|uptime/)) return 'performance_reliability';
+  
+  // Infrastructure & Platform (migrations, architecture, platform work)
+  if (has(/infrastructure|migration|upgrade.*platform|platform.*upgrade|architecture|moderni[zs]|docker|kubernetes|deployment.*automat|devops/)) return 'infrastructure_platform';
+  
+  // Security & Compliance (security, auth, compliance, risk)
+  if (has(/security|encrypt|compliance|gdpr|risk.*assess|privacy|pci|vulnerability|audit|pen[- ]?test/)) return 'security_compliance';
+  
+  return 'general_improvements';
 }
 
 export async function mapPreviewToTemplate(preview, openai = null){
@@ -88,7 +174,8 @@ export async function mapPreviewToTemplate(preview, openai = null){
       bullets: i.bullets || [],
       comments: i.comments || [],
       oneLiner: i.oneLiner || '',
-      url: i.url
+      url: i.url,
+      description: i.description || ''
     }));
   } else if (Array.isArray(preview.items) && preview.items.length) {
     // Legacy mapping: items may already contain icon/color/body; convert to issue-like objects
@@ -119,7 +206,7 @@ export async function mapPreviewToTemplate(preview, openai = null){
 
   // Build items with colors/icons and safe HTML body. Heading does NOT include the icon
   // Apply editorial rules: remove 'internal' labeled items, strip names, pick 3-5 bullets, trim bullets to 15 words
-  const filteredSource = source.filter(s => !(Array.isArray(s.labels) && s.labels.map(l=>String(l).toLowerCase()).includes('internal')));
+  const filteredSource = source.filter(s => !(Array.isArray(s.labels) && s.labels.map(l=>String(l).toLowerCase()).includes('internal')) && !String(s.summary).trim().includes('1099 MISC copy available in users account'));
 
   const items = filteredSource.map(i=>{
     const providedColor = i._providedColor;
@@ -161,7 +248,7 @@ export async function mapPreviewToTemplate(preview, openai = null){
       url: i.url, 
       body, 
       status: i.status || '', 
-      description: displayTitle, 
+      description: i.description || '', 
       bullets: picked,
       // Preserve original data for categorization
       _originalSummary: i.summary,
@@ -193,12 +280,41 @@ export async function mapPreviewToTemplate(preview, openai = null){
       description: item.heading,
       bullets: item.bullets || []
     });
+    
+    // Custom closing for Shapiro Raj
+    const closingStatement = item.heading.toLowerCase().includes('shapiro') ? 'These enhancements are creating a scalable model for onboarding future whitelabeled clients!' : aiClosing;
+    
+    // Custom summaries for specific projects (preferred descriptions)
+    let customSummary = null;
+    const headingLower = item.heading.toLowerCase();
+    if (headingLower.includes('updated client contacts table') || headingLower.includes('client contacts')) {
+      customSummary = 'Transforms client management by eliminating duplicates and introducing flexible account tagging that paves the way for our upcoming client portal.';
+    } else if (headingLower.includes('list manager tool')) {
+      customSummary = 'Consolidates recruitment list operations into a single, powerful hub that simplifies compliance tracking while accelerating project workflows.';
+    } else if (headingLower.includes('shapiro')) {
+      customSummary = "Establishes Shapiro + Raj's independent Qualstage environment with customized project management tools and enterprise-level security, creating our blueprint for future white-labeled partnerships.";
+    } else if (headingLower.includes('dragonfly') || headingLower.includes('consent with recordings')) {
+      customSummary = 'Delivers secure call recording and consent management that strengthens compliance while improving client transparency and trust.';
+    } else if (headingLower.includes('dynamic audience')) {
+      customSummary = 'Intelligently surfaces only relevant questions based on audience selection, cutting through survey complexity to make data collection faster and more intuitive.';
+    } else if (headingLower.includes('client portal')) {
+      customSummary = 'Introduces our M3GR-branded client portal with unified single sign-on, creating a seamless hub where clients access all project resources across platforms.';
+    } else if (headingLower.includes('bidding 2.3')) {
+      customSummary = 'Reimagines pricing management with an intuitive new interface that improves accuracy and catches errors before they impact operations.';
+    } else if (headingLower.includes('automatic discount')) {
+      customSummary = 'Automates discount calculations to eliminate manual errors and boost profitability, freeing teams from spreadsheet complexity to focus on strategic work.';
+    } else if (headingLower.includes('expert networks')) {
+      customSummary = 'Expands consulting opportunities while automating payment workflows, giving experts better visibility and a smoother path from opportunity to compensation.';
+    }
+    
     const aiSummary = await generateCardSummary(openai, {
       summary: item.heading,
       status: item.status,
-      description: item.heading,
+      description: item.description,
       bullets: item.bullets || []
     });
+    
+    const finalSummary = customSummary || aiSummary;
     
     // Rebuild body with AI-generated bullets instead of original picked bullets
     const bulletsHtmlAi = aiBullets.length ? `<ul>${aiBullets.map(b=>`<li>${escapeHtml(b)}</li>`).join('')}</ul>` : '';
@@ -209,8 +325,8 @@ export async function mapPreviewToTemplate(preview, openai = null){
       bullets: aiBullets, 
       body: bodyWithAiBullets,
       icon: aiIcon, 
-      closingStatement: aiClosing, 
-      cardSummary: aiSummary 
+      closingStatement: closingStatement, 
+      cardSummary: finalSummary 
     };
   }));
 
@@ -237,14 +353,19 @@ export async function mapPreviewToTemplate(preview, openai = null){
 
   // Derive dynamic title from the date field using the "next month" rule per instructions.md
   // If date is "2025-09-01", derive title as "October 2025 Engineering Newsletter"
-  let dynamicTitle = preview.title || 'Engineering Update';
+  // If date is "2025-12-01", derive title as "January 2026 Engineering Newsletter"
+  let dynamicTitle = 'Engineering Update';
   if (preview.date) {
     const dateObj = dayjs(preview.date);
     if (dateObj.isValid()) {
-      const nextMonth = dateObj.add(1, 'month').format('MMMM');
-      const year = dateObj.year();
+      const nextMonthObj = dateObj.add(1, 'month');
+      const nextMonth = nextMonthObj.format('MMMM');
+      const year = nextMonthObj.year(); // Use the year from the next month
       dynamicTitle = `${nextMonth} ${year} Engineering Newsletter`;
     }
+  } else if (preview.title) {
+    // Only use preview.title if no date is available
+    dynamicTitle = preview.title;
   }
 
   // Generate AI-powered Quick Wins section description
@@ -252,49 +373,6 @@ export async function mapPreviewToTemplate(preview, openai = null){
 
   // ---------------- Impact / Investment Overview Section ----------------
   // Categorize each enriched item to show where engineering effort is going.
-  function categorizeIssue(issue){
-    const summary = issue._originalSummary || issue.summary || issue.heading || '';
-    const status = issue.status || '';
-    const labels = issue._originalLabels || [];
-    const comments = issue._originalComments || [];
-    const commentsText = comments.map(c => c.text || '').join(' ');
-    const text = `${summary} ${status} ${issue.heading || ''} ${issue.description || ''} ${commentsText}`.toLowerCase();
-    const labelText = labels.map(l=>String(l).toLowerCase()).join(' ');
-    const has = (re) => re.test(text) || re.test(labelText);
-    
-  // Client Experience (portals, UI/UX, client-facing improvements, first experience) - check first as it's specific
-  if (has(/client portal|customer portal|front[- ]end portal|user portal|self[- ]service|first experience/)) return 'client_experience';
-    
-  // Integration & APIs (third-party integrations, API work, major integration projects) - prioritize over product features
-  if (has(/integration|\ api[\s\b]|sso|azure ad|authentication.*api|maven|hubspot|nexmo|dotdigital|third[- ]party|webhook|consent.*recording|expert.*network|authentication.*permission/)) return 'integration_apis';
-    
-    // Financial Systems (billing, payments, revenue, invoicing) - specific financial keywords
-    if (has(/\bbilling\b|\binvoice\b|revenue|payment|pricing|\bfinance\b|financial system|discount program|incentive program|accrual/)) return 'financial_systems';
-    
-    // Internal Tools & Admin (admin panels, internal tooling, system management)
-  if (has(/admin tool|contact management|\bcontact.{0,15}table|account management|client contact|master.*tool|duplicate|system tool|internal tool|crm|feasibility.*boost/)) return 'internal_tools';
-    
-    // Data & Analytics (reporting, data management, analytics tools)
-  if (has(/\bdata\b.*tool|\breport|analytic|business intelligence|desk research|purchased data|centrali[sz]ed.*data|kpi|ad.*intel|m3mi/)) return 'data_analytics';
-    
-  // Product & Features (new offerings, major features, product development, platform products) - broader catch-all for products
-  if (has(/bidding|dragonfly|audience.*dynamic|dynamic.*audience|wallet.*note|registration.*process|discount.*calculat|list.*match|qualstage|m3teor|verification.*tool|bulk.*email|campaign.*automat/)) return 'product_features';
-    
-    // Testing & Quality (UAT, testing, QA) - after feature categories so it doesn't override
-    if (has(/\buat\b|user acceptance test|testing phase|test coverage|qa phase|quality assurance|bug fix.*phase|defect/)) return 'testing_quality';
-    
-    // Performance & Reliability (optimization, stability, performance)
-    if (has(/performance|speed improvement|latency|optimi[zs]ation|scalab|throughput|efficiency gain|reliability|stability|monitor|uptime/)) return 'performance_reliability';
-    
-    // Infrastructure & Platform (migrations, architecture, platform work)
-    if (has(/infrastructure|migration|upgrade.*platform|platform.*upgrade|architecture|moderni[zs]|docker|kubernetes|deployment.*automat|devops/)) return 'infrastructure_platform';
-    
-    // Security & Compliance (security, auth, compliance, risk)
-    if (has(/security|encrypt|compliance|gdpr|risk.*assess|privacy|pci|vulnerability|audit|pen[- ]?test/)) return 'security_compliance';
-    
-    return 'general_improvements';
-  }
-
   const categoryMeta = {
     product_features: { label: 'Product & Features', color: '#0b79ff' },
     client_experience: { label: 'Client Experience', color: '#17a2b8' },
@@ -324,7 +402,9 @@ export async function mapPreviewToTemplate(preview, openai = null){
     .map(k => {
       const count = categoryCounts[k];
       const percent = +( (count / totalCategorized) * 100 ).toFixed(1);
-      return { key: k, label: categoryMeta[k].label, color: categoryMeta[k].color, count, percent };
+      // Calculate bar height for table-based visualization (minimum 8px for visibility, max 140px total)
+      const barHeight = Math.max(8, Math.round((percent / 100) * 140));
+      return { key: k, label: categoryMeta[k].label, color: categoryMeta[k].color, count, percent, barHeight };
     })
     .sort((a,b)=> b.percent - a.percent);
 
@@ -432,14 +512,19 @@ export async function mapPreviewToTemplate(preview, openai = null){
     date: preview.date || dayjs().format('MMMM D, YYYY'),
     prioritiesSection,
     investmentOverview,
+    yearEndSummary: preview.yearEndSummary || null,
     tocLeft,
     tocRight,
     leftItems,
     rightItems,
-    quickWins,
+    quickWins: (preview.quickWins || []).map(qw => ({
+      title: qw.key,
+      description: qw.summary
+    })),
     quickWinsDescription
   };
 }
 
-export default { mapPreviewToTemplate };
+export { aggregateYearStats };
+export default { mapPreviewToTemplate, aggregateYearStats };
 

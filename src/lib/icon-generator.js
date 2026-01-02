@@ -94,14 +94,44 @@ export async function generateClosingStatement(openai, context) {
   }
 
   try {
-    const prompt = `Generate a short, positive, single-sentence closing statement (max 12 words) for a project update. Start with an emoji.
+    const prompt = `Generate a short, positive, single-sentence closing statement (max 12 words) for a project update. Start with an emoji that matches the project's content/theme.
 
 Project Title: ${context.summary || ''}
 Status: ${context.status || ''}
 Bullets: ${(context.bullets || []).slice(0, 2).join('; ') || 'none'}
 Description: ${context.description || ''}
 
-Return only the closing statement, nothing else. Make it uplifting and professional.`;
+ICON SELECTION GUIDE - Choose emojis based on project content:
+- Client/Customer work: 👥 🤝 💬 🎨 🌐
+- Data/Analytics: 📊 📈 💹 🔍 📉
+- Performance/Speed: ⚡ 🏃 ⏱️ 🚀 💨
+- Security/Auth: 🔒 🛡️ 🔐 🔑 ✅
+- Money/Billing: 💰 💳 💵 💸 🏦
+- Tools/Systems: 🛠️ ⚙️ 🔧 🔨 🧰
+- Integration: 🔗 🔌 🌉 🤖 📡
+- Communication: 📞 💬 📧 📢 🗣️
+- Quality/Testing: ✅ 🧪 🔬 ✔️ 🎯
+- Launch/Release: 🎉 🎊 🚀 ⭐ 🎯
+- Infrastructure: 🏗️ 🧱 🌁 🏢 🔧
+- Innovation: 💡 🚀 ✨ 🔮 💫
+
+EXAMPLES with content-matched icons:
+- 💳 Streamlining payment workflows for faster revenue recognition!
+- 🔒 Strengthening security across all authentication touchpoints!
+- 📊 Unlocking deeper insights for data-driven decisions!
+- 🤝 Enhancing client experience with seamless portal access!
+- ⚡ Boosting performance for smoother user interactions!
+- 🛠️ Automating manual processes to save team time!
+- 🔗 Connecting systems for unified data flow!
+
+CRITICAL RULES:
+1. Choose an emoji that DIRECTLY relates to the project's content/domain
+2. DO NOT use 🌟 or 🌈 - these are overused
+3. Vary sentence structure - avoid formulaic patterns
+4. Be specific to the project's actual impact
+5. Keep it professional and uplifting
+
+Return only the closing statement, nothing else.`;
 
     const response = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
@@ -162,24 +192,37 @@ export async function generateCardSummary(openai, context) {
 
 ${INSTRUCTIONS_CONTEXT}
 
-TASK: Generate a concise, professional one-sentence summary (max 15 words) for a project card. Focus on business impact and outcomes, NOT on technical details or process.
+TASK: Generate a concise, professional one-sentence summary (max 25 words) for a project card in this exact style: [Strong verb] [key innovation/change] [business benefits and impact].
+
+Examples of GOOD summaries:
+- Transforms how we manage client data with flexible, account-tagged contacts that accelerate the client portal project while simplifying daily operations.
+- Centralizes recruitment list management in one powerful tool, bringing compliance tracking and operational efficiency together for seamless project execution.
+- Empowers Shapiro + Raj with their own dedicated Qualstage environment, delivering enterprise-grade security and scalability while establishing our blueprint for future white-labeled partnerships.
+- Automates expert matching with intelligent scoring algorithms that eliminate manual searches and accelerate project staffing.
+- Unifies bidding workflows into a single interface that reveals market dynamics and guides strategic resource decisions.
 
 Project Title: ${context.summary || ''}
 Status: ${context.status || ''}
 Bullets: ${(context.bullets || []).slice(0, 3).join('; ') || 'none'}
 Description: ${context.description || ''}
 
+FORBIDDEN WORDS - DO NOT START WITH THESE VERBS:
+Enhanced, Enabled, Streamlined, Improved, Delivered, Completed, Launched, Introduced, Advanced, Expanded, Optimized, Integrated, Upgraded, Updated, Implemented, Developed, Built, Created, Added, Fixed
+
+INSTEAD USE VERBS LIKE:
+Transforms, Centralizes, Empowers, Automates, Unifies, Simplifies, Consolidates, Revolutionizes, Reimagines, Redefines, Elevates, Unlocks, Bridges, Connects, Orchestrates, Accelerates (if describing future impact, not completion)
+
 CRITICAL REQUIREMENTS:
-- Focus on WHAT was accomplished and its BUSINESS IMPACT (e.g., "improved user experience", "cost savings", "efficiency gains")
-- Start with an action verb or outcome (e.g., "Delivered", "Completed", "Enabled", "Improved", "Enhanced")
-- Use simple, clear language accessible to NON-TECHNICAL employees
-- DO NOT use these words: "update", "progress", "status", "highlight", "achievement", "activity"
+- Start with a verb from the APPROVED list (NOT from the forbidden list)
+- Describe the specific innovation or change in concrete terms
+- Highlight business benefits and strategic impact
+- Use active voice, vivid language, and unique phrasing
 - Make it inspiring and forward-looking
 - Return ONLY the summary sentence, nothing else.`;
 
     const response = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
-      max_tokens: 30,
+      max_tokens: 40,
       messages: [{ role: 'user', content: prompt }]
     });
 
@@ -215,7 +258,9 @@ Raw Updates: ${(context.bullets || []).slice(0, 5).join('; ') || 'none'}
 CRITICAL REQUIREMENTS:
 - Each bullet must be 1-12 words maximum
 - Focus ONLY on business impact and outcomes (not technical processes)
-- Start each with action verbs: "Delivered", "Improved", "Enabled", "Completed", "Reduced", "Enhanced"
+- Use natural, conversational language - write as if explaining to a colleague in simple terms
+- Vary your sentence structure naturally - DO NOT force every bullet to start with the same pattern or verb
+- Make it sound human and engaging, not robotic or templated
 - NO technical details, acronyms (unless explained), or issue codes
 - NO metadata labels (remove "highlight:", "update:", "note:", "achievement:", "status:")
 - NO team member names
@@ -242,6 +287,58 @@ CRITICAL REQUIREMENTS:
   } catch (err) {
     console.error('Error generating bullets:', err.message);
     return [];
+  }
+}
+
+/**
+ * Generate a year-end summary celebrating accomplishments and comparing to previous year.
+ * Returns { narrative, comparison } or null.
+ */
+export async function generateYearEndSummary(openai, stats2024, stats2025) {
+  if (!openai) {
+    const growth = stats2024.total > 0 ? Math.round(((stats2025.total - stats2024.total) / stats2024.total) * 100) : 0;
+    return {
+      narrative: `In 2025, we delivered ${stats2025.total} projects${growth > 0 ? ` (${growth}% growth from 2024)` : ''}, advancing our product capabilities and operational excellence.`,
+      comparison: growth > 0 ? 'up' : growth < 0 ? 'down' : 'stable'
+    };
+  }
+
+  try {
+    const growth = stats2024.total > 0 ? Math.round(((stats2025.total - stats2024.total) / stats2024.total) * 100) : 0;
+    const prompt = `Write a brief, celebratory 2-3 sentence year-end summary for an engineering team newsletter.
+
+2024 Stats: ${stats2024.total} projects delivered, top focus: ${stats2024.topCategory}
+2025 Stats: ${stats2025.total} projects delivered, top focus: ${stats2025.topCategory}
+Growth: ${growth}%
+
+REQUIREMENTS:
+- Celebrate team accomplishments with an uplifting tone
+- Mention year-over-year growth (if positive)
+- Highlight impact on customers or business outcomes
+- Keep it brief (max 50 words, 2-3 sentences)
+- Professional but warm tone
+
+Return ONLY the summary text, no extra formatting.`;
+
+    const response = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      max_tokens: 100,
+      temperature: 0.4,
+      messages: [{ role: 'user', content: prompt }]
+    });
+
+    const narrative = (response.choices[0]?.message?.content || '').trim();
+    return {
+      narrative: narrative || `In 2025, we delivered ${stats2025.total} projects, ${growth > 0 ? `growing ${growth}% from 2024` : 'maintaining our strong delivery pace'}.`,
+      comparison: growth > 0 ? 'up' : growth < 0 ? 'down' : 'stable'
+    };
+  } catch (err) {
+    console.error('Error generating year-end summary:', err.message);
+    const growth = stats2024.total > 0 ? Math.round(((stats2025.total - stats2024.total) / stats2024.total) * 100) : 0;
+    return {
+      narrative: `In 2025, we delivered ${stats2025.total} projects${growth > 0 ? ` (${growth}% growth from 2024)` : ''}.`,
+      comparison: growth > 0 ? 'up' : growth < 0 ? 'down' : 'stable'
+    };
   }
 }
 
